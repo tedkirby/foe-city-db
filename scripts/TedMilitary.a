@@ -1,0 +1,57 @@
+Attribute	TedMilitary
+FP	
+FPBoost	
+Goods	
+prvGoods	
+nxGoods	
+UnrefinedGoods	
+GoodsBoost	
+SR	
+SRBoost	
+tGoods	
+tGoodsBoost	
+MilitaryUnits	0.5
+Rogues	
+Coins	
+CoinBoost	
+Supplies	
+SupplyBoost	
+Medals	
+MedalBoost	
+Diamonds	
+BP	
+GuildPower	
+Population	
+Happiness	
+RedAttack	1
+RedDefense	1
+BlueAttack	1
+BlueDefense	1
+RedAttackGBG	1
+RedDefenseGBG	1
+BlueAttackGBG	1
+BlueDefenseGBG	1
+RedAttackGE	0.05
+RedDefenseGE	0.04
+BlueAttackGE	0.05
+BlueDefenseGE	0.04
+RedAttackQI	2
+RedDefenseQI	1.6
+BlueAttackQI	
+BlueDefenseQI	
+MultiplierRedAttackGBG	
+MultiplierRedDefenseGBG	
+MultiplierBlueAttackGBG	
+MultiplierBlueDefenseGBG	
+MultiplierRedAttackGE	
+MultiplierRedDefenseGE	
+MultiplierBlueAttackGE	
+MultiplierBlueDefenseGE	
+CoinBoostQI	
+SupplyBoostQI	
+CoinsQI	
+SuppliesQI	
+GoodsQI	
+MilitaryUnitsQI	
+QA	0.0110
+QACapacity	
