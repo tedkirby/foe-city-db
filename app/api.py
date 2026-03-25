@@ -240,10 +240,6 @@ def ingest_linnun():
 
             tl."rank" AS linnun_rank,
 
-            height,
-            width,
-            tl.roads,
-
             CASE
                 WHEN width = height THEN 'B'
                 WHEN width > height THEN 'H'
