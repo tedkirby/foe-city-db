@@ -1,1 +1,1 @@
-db_path: ~/foe/city-engine/data/city_engine.duckdb
+db_path: ./data/city_engine.duckdb
