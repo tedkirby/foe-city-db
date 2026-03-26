@@ -423,5 +423,20 @@ def efficiency():
     return {"status": "ok", "columns": columns, "rows": rows}
 
 
+@app.route("/config_weights", methods=["GET"])
+def get_config_weights():
+    con = get_connection()
+
+    rows = con.execute(
+        """
+        SELECT profile, mode, attribute, weight
+        FROM config_weights
+        ORDER BY profile, attribute
+    """
+    ).fetchall()
+
+    return {"status": "ok", "rows": rows}
+
+
 if __name__ == "__main__":
     app.run(port=5000)
