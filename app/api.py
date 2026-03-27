@@ -410,7 +410,7 @@ def efficiency():
     FROM curated_linnun cl
     JOIN total t USING (building)
 
-    ORDER BY combined_rank ASC
+    ORDER BY efficiency_rank ASC
     """
 
     print(query)
