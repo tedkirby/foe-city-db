@@ -391,6 +391,7 @@ def efficiency():
 
     SELECT
         cl.building,
+        cl.event,
         cl.linnun_rank,
         cl.efficiency as ln_efficiency,
 
