@@ -320,26 +320,64 @@ def efficiency():
     con = get_connection()
 
     # -----------------------------
-    # Get attribute list dynamically
+    # 1. Get Linnun column order
     # -----------------------------
-    attrs = con.execute(
+    attr_rows = con.execute(
         """
-        SELECT DISTINCT attribute
-        FROM config_weights
-        WHERE mode = 'attributes'
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'curated_linnun'
+        ORDER BY ordinal_position
     """
     ).fetchall()
 
-    attr_cols = [row[0] for row in attrs]
-
-    if not attr_cols:
-        return {"status": "error", "message": "No attribute weights found"}, 400
-
-    # Build UNPIVOT column list
-    attr_list_sql = ",\n            ".join(attr_cols)
+    linnun_cols = [r[0] for r in attr_rows]
 
     # -----------------------------
-    # Build query dynamically
+    # 2. Get non-zero weights
+    # -----------------------------
+    weight_rows = con.execute(
+        """
+        SELECT attribute, weight
+        FROM config_weights
+        WHERE profile = ?
+          AND mode = 'attributes'
+          AND weight != 0
+        """,
+        [profile],
+    ).fetchall()
+
+    weight_lookup = {k: v for k, v in weight_rows}
+
+    # -----------------------------
+    # 3. Final attribute list (ordered)
+    # -----------------------------
+    attr_cols = [c for c in linnun_cols if c in weight_lookup]
+
+    if not attr_cols:
+        return {"status": "error", "message": "No active attributes"}, 400
+
+    # -----------------------------
+    # 4. Build SQL fragments
+    # -----------------------------
+    attr_list_sql = ",\n            ".join(attr_cols)
+
+    attr_select_sql = ",\n        ".join(
+        [
+            f"""
+        COALESCE(
+            MAX(CASE
+                WHEN a.attribute = '{attr}'
+                THEN a.value * a.weight
+            END),
+        0) AS "{attr}"
+        """
+            for attr in attr_cols
+        ]
+    )
+
+    # -----------------------------
+    # 5. Main query
     # -----------------------------
     query = f"""
     WITH attr AS (
@@ -355,16 +393,25 @@ def efficiency():
         )
     ),
 
-    attr_weight AS (
+    attr_join AS (
         SELECT
             a.building,
-            SUM(a.value * w.weight) AS attr_weight
+            a.attribute,
+            a.value,
+            w.weight
         FROM attr a
         JOIN config_weights w
           ON w.profile = '{profile}'
          AND w.mode = 'attributes'
          AND w.attribute = a.attribute
-        GROUP BY a.building
+    ),
+
+    attr_weight AS (
+        SELECT
+            building,
+            SUM(value * weight) AS attr_weight
+        FROM attr_join
+        GROUP BY building
     ),
 
     item_weight AS (
@@ -387,41 +434,69 @@ def efficiency():
         FROM curated_linnun cl
         LEFT JOIN attr_weight a USING (building)
         LEFT JOIN item_weight i USING (building)
+    ),
+
+    scored AS (
+        SELECT
+            cl.building AS "Building",
+            cl.event AS "Event",
+            cl.linnun_rank,
+            cl.efficiency AS ln_efficiency,
+            t.total_weight,
+            cl.footprint,
+
+            t.total_weight / NULLIF(cl.footprint, 0) AS efficiency
+
+        FROM curated_linnun cl
+        JOIN total t USING (building)
+    ),
+
+    ranked AS (
+        SELECT *,
+            RANK() OVER (ORDER BY efficiency DESC) AS efficiency_rank
+        FROM scored
     )
 
     SELECT
-        cl.building,
-        cl.event,
-        cl.linnun_rank,
-        cl.efficiency as ln_efficiency,
+        r."Building",
+        r."Event",
+        r.linnun_rank,
+        r.ln_efficiency,
+        r.efficiency,
+        r.total_weight,
+        r.efficiency_rank,
+        (r.linnun_rank + r.efficiency_rank) / 2.0 AS combined_rank,
+        {attr_select_sql}
 
-        t.total_weight / NULLIF(cl.footprint, 0) AS efficiency,
-        t.total_weight,
+    FROM ranked r
+    LEFT JOIN attr_join a
+      ON r."Building" = a.building
 
-        RANK() OVER (
-            ORDER BY t.total_weight / NULLIF(cl.footprint, 0) DESC
-        ) AS efficiency_rank,
+    GROUP BY
+        r."Building",
+        r."Event",
+        r.linnun_rank,
+        r.ln_efficiency,
+        r.efficiency,
+        r.total_weight,
+        r.efficiency_rank
 
-        (cl.linnun_rank +
-         RANK() OVER (
-            ORDER BY t.total_weight / NULLIF(cl.footprint, 0) DESC
-         )
-        ) / 2.0 AS combined_rank
-
-    FROM curated_linnun cl
-    JOIN total t USING (building)
-
-    ORDER BY efficiency_rank ASC
+    ORDER BY r.efficiency_rank ASC
     """
 
-    print(query)
+    # Debug if needed
+    # print(query)
 
     result = con.execute(query).fetchall()
     columns = [desc[0] for desc in con.description]
-
     rows = [list(row) for row in result]
 
-    return {"status": "ok", "columns": columns, "rows": rows}
+    return {
+        "status": "ok",
+        "columns": columns,
+        "rows": rows,
+        "weights": weight_lookup,
+    }
 
 
 @app.route("/config_weights", methods=["GET"])
