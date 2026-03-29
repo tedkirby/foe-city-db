@@ -442,6 +442,7 @@ def efficiency():
             cl.event AS "Event",
             cl.linnun_rank,
             cl.efficiency AS ln_efficiency,
+             cl."I_F_Value" AS ln_I_F_Value,
             t.total_weight,
             cl.footprint,
 
@@ -462,24 +463,30 @@ def efficiency():
         r."Event",
         r.linnun_rank,
         r.ln_efficiency,
+        r.ln_I_F_Value,
         r.efficiency,
         r.total_weight,
         r.efficiency_rank,
         (r.linnun_rank + r.efficiency_rank) / 2.0 AS combined_rank,
+        COALESCE(i.item_weight, 0) AS "I_F_Value",
         {attr_select_sql}
 
     FROM ranked r
     LEFT JOIN attr_join a
       ON r."Building" = a.building
+    LEFT JOIN item_weight i
+      ON r."Building" = i.building
 
     GROUP BY
         r."Building",
         r."Event",
         r.linnun_rank,
         r.ln_efficiency,
+        r.ln_I_F_Value,
         r.efficiency,
         r.total_weight,
-        r.efficiency_rank
+        r.efficiency_rank,
+        i.item_weight
 
     ORDER BY r.efficiency_rank ASC
     """
